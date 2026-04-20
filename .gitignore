@@ -1,0 +1,8 @@
+.mcp.json
+.mcp.*.json
+.env
+.env.local
+.env.*.local
+
+.claude/worktrees/
+.claude/settings.local.json

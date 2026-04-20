@@ -78,6 +78,7 @@ When building ANY module, follow this sequence:
 | — | Platform Roles & Permissions | 022 |
 | — | Org Hierarchy & Escalation | 023 |
 | — | Industry Preset Switcher | — |
+| 27 | Work Packs + Notifications Phase 1 | 024 |
 
 ### Next to Build
 | # | Module | Priority |
