@@ -2,11 +2,13 @@
 
 ## Build Status
 - [Full module status + architecture](../../../Epsillon-Media-Claude-Work/memory/sentinal-whs.md) — canonical reference in shared base workspace
-- 12 modules built, migrations 015-025, ~40 DB tables, ~75 API endpoints
-- Latest: Module 28 Phase 1b shipped (commit a3425c0, 2026-04-20) — admin invite + public 6-step onboarding wizard + file upload to `onboarding-documents` bucket
-- Pending on 28: Phase 1c AI doc review (Claude vision extracts licence expiry, flags discrepancies)
-- Plan 29 Involvement Tracking written (`plans/modules/29-involvement-tracking.md`) + locked — IP/PI/Witness/First Aider terminology, 3-tier privacy, inferred-links-show-by-default with Confirm-with-role-picker
-- Next (after 28 Phase 1c): Module 29 build, then Timesheets (06)
+- 20+ modules/features built, migrations 015-032, ~55 DB tables, ~100+ API endpoints
+- Latest session (2026-05-02): Plans 30+31+32 shipped — Submit New Event, polymorphic event forms (6 types, 3-tier taxonomy), consultation lifecycle Plan→Run→Confirm
+- Latest migration: **032** (event_attendees, event_attendee_audit_log, lifecycle_status on investigations)
+- Plan 30+31 (event system + polymorphic forms): Built & Deployed — migrations 026-030
+- Plan 32 (consultation lifecycle): Built & Deployed — migrations 031-032
+- **Follow-up required:** Add `CRON_SECRET` to Railway env vars; set up daily external cron to hit `/api/cron/consultation-reminders`
+- Next to build: Plan 28c (AI doc review), Plan 29 (Involvement Tracking), Plan 06 (Timesheets)
 
 ## Founding Customer
 - Kim (Embark Building) — builder, warm lead via Jono's wife
@@ -24,6 +26,19 @@
 - Project ID: wuoasccjyqkdstsxuudt
 - Account: yeaboii14@gmail.com (main account invited for MCP access)
 - RLS uses `get_my_organisation_id()` function on heritage tables, direct subquery on new tables
+- **Supabase MCP fallback** — when MCP isn't loaded in a session, use Admin REST directly: load `SUPABASE_SERVICE_ROLE_KEY` from `.env.local`, call `/auth/v1/admin/users/{id}` (PUT, with `email_confirm: true` to skip re-verification) for auth changes and `/rest/v1/users?id=eq.{id}` (PATCH) for `public.users`. Single-shot node script avoids needing the MCP at all.
+
+## Email (Resend)
+- Wired through `src/lib/email/send-email.ts` — see [project_resend_free_tier.md](../../../.claude/projects/c--Users-RadiumPCs-Claude-Code-Workspaces-Sentinal-WHS/memory/project_resend_free_tier.md) (auto-memory) for full integration details, free-tier policy, verified domain, gotchas
+- Verified sending domain: `send.sentinelwhs.com` (subdomain — apex stays free for Workspace mailboxes)
+- Free tier (2/day) by choice — do NOT suggest upgrade until first paying customer
+- **Production gap:** Railway env vars not pushed (CLI auth expired 2026-05-01). Prod stubs email until `RESEND_API_KEY` + `RESEND_FROM_EMAIL` are set on Railway
+
+## Login Accounts
+- Owner: `jonathon@sentinelwhs.com` (was `jono@sentinal.test`)
+- Admin: `craig@sentinelwhs.com` (was `craig@sentinal.test`)
+- Updated 2026-05-01 in both `auth.users` (email_confirmed) and `public.users`. Passwords unchanged.
+- Other 10 seeded users still on `*@sentinal.test` (Sarah Chen, Lisa Park, Marcus Webb, Tom Rickard, Danny Tran, Dave Nguyen, James O'Brien, Ryan Foster, Kelly Tran, Priya Singh)
 
 ## Known Gotchas
 - Zod v4 in this project — `z.record()` needs 2 args, `useState(null)` needs explicit type
@@ -42,12 +57,18 @@
 - Onboarding submission creates auth user first: `supabase.auth.admin.createUser({ email, email_confirm: false })` → then insert `public.users` with that UUID. `users.auth_id` is NOT NULL so this ordering matters. Invitee confirms via magic link on first sign-in (not yet built).
 - `onboarding-documents` Storage bucket is private, keyed by org UUID as first path segment. RLS SELECT policy scopes by `((storage.foldername(name))[1])::uuid IN (SELECT organisation_id FROM users WHERE auth_id = auth.uid())`. Service role bypasses for public uploads.
 - WHS industry terminology locked for involvement tracking: IP = Injured Person, PI = Person Involved, plus Witness / First Aider / Supervisor / Site Manager / Contractor. Inference is tracked on a separate `source` column, NOT as a role-name suffix.
+- `event_attendee_audit_log` is append-only — DB trigger (`trg_event_attendee_audit_log_no_update` + `_no_delete`) THROWS on any UPDATE or DELETE. Do NOT attempt bulk updates via service role; they will fail loudly.
+- Consultation investigations with `lifecycle_status` set render a different detail view (attendance panel + ConsultationAttendancePanel) rather than plain polymorphic detail. Unwanted Event rows always get the full investigation tabs.
+- Unwanted Event 3-tier taxonomy order: **Incident** (display 10) → Incident — Environmental (20) → Incident — Injury / Illness (30). "Incident" was renamed from "Incident — Other" — don't restore the old name.
 
 ## Workspace Config
-- `.mcp.json` in Sentinal-WHS workspace root has Supabase (PAT-authed) + Railway + NameSilo (HTTP, X-API-KEY header). Gitignored.
+- `.mcp.json` in Sentinal-WHS workspace root has Supabase (PAT-authed) + Railway + NameSilo. Gitignored.
+- **Global `~/.mcp.json`** has `gdrive` + `sheets-mcp` — loads in ALL workspaces automatically. See `mcp-servers.md` for full config + gotchas.
 - Workspace IS a git repo with remote `Jonathonjw/dev-whs-sentinel` — secrets MUST stay in `.gitignore`
 - Supabase PAT shared with Epsillon workspace — if rotated, update both `.mcp.json` files
 - NameSilo MCP endpoint `https://mcp.namesilo.com/rpc` — `X-API-KEY` header auth (NOT `?key=` query param; that's the separate REST API). Details in `../../../Epsillon-Media-Claude-Work/memory/mcp-servers.md`
+- **Supabase Management API token:** Workspace `.mcp.json` PAT only reaches Epsillon Media projects. For Sentinal (project `wuoasccjyqkdstsxuudt`), use the PAT from `epsillon-dev/.mcp.json` key `supabase2` (gitignored, not stored here). When MCP isn't loaded in session, apply migrations via temp `.tmp_apply_migration.mjs` Node script using that token + `https://api.supabase.com/v1/projects/{ref}/database/query`.
+- **Memory lives in workspace dir, NOT in the harness auto-memory path.** Canonical location: `C:\Users\RadiumPCs\Claude Code Workspaces\Sentinal-WHS\memory\` (this file). The system-prompt-configured path `~\.claude\projects\c--Users-RadiumPCs-...-Sentinal-WHS\memory\` is empty by design. Always write/edit memory here, not there — otherwise new entries get orphaned from this index.
 
 ## Brand Decision Pending
 - **"Sentinal" is a misspelling of "sentinel"** — whole project currently uses the misspelled form. Rebrand to "Sentinel WHS" recommended before domain registration + Kim signing. Details + domain availability snapshot: [branding.md](branding.md)

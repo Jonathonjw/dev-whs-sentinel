@@ -38,4 +38,4 @@ Add nav items to `src/components/layout/sidebar.tsx`. Module-gated items go in t
 
 ## Migration Numbering
 
-Check `supabase/migrations/` for the latest number. Increment by 1. Current latest: 023.
+Check `supabase/migrations/` for the latest number. Increment by 1. Current latest: 036.

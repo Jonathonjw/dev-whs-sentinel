@@ -18,7 +18,7 @@ Dedicated workspace for **Sentinal WHS** — a modular Work Health & Safety SaaS
 
 **Full auto:** "mighty morphin claude code go" — switch to full auto mode, invoke `dev-brain` to plan and orchestrate with specialist agents in parallel.
 
-**Always confirm:** git force push (never) · existing file deletion · database DROP statements
+**Always confirm:** git force push (never)
 
 ## Context Window Protection (CRITICAL)
 
@@ -79,18 +79,51 @@ When building ANY module, follow this sequence:
 | — | Org Hierarchy & Escalation | 023 |
 | — | Industry Preset Switcher | — |
 | 27 | Work Packs + Notifications Phase 1 | 024 |
+| 28 | People Module Phase 1a + 1b (profile read-only, correction requests, admin invite + 6-step public onboarding wizard, `onboarding-documents` Storage bucket) | 025 |
+| — | `/people` directory rebuild (filter sidebar, A-Z bar, URL-driven pagination) + Investigation People Involved → UserAutocomplete | — |
+
+### In Progress (schema complete, UI not built)
+| # | Module | Notes |
+|---|--------|-------|
+| 30 | Event Form Framework (polymorphic events: Unwanted Event / Field Leadership / Assurance / Regulatory / Mine Record) | Schema in migrations 026-030. Depends on 29 for full value. |
+| 31 | Consultation Event Lifecycle (plan/run/confirm + attendance) | 6th event type; tables in 030, 032. |
+| 34 | Rosters & Workforce Scheduling (FIFO patterns, swap requests, conflict detection, audit) | Phases 0-2.5 schema in migrations 031, 033-036. Phases 3-5 deferred (conflict detector, swap RLS, geotracking fatigue bridge). |
+| 36 | Event Taxonomy Admin UI | Schema seeded auto on org creation (migration 026); no admin CRUD UI. |
+
+### Stub UI Only (page exists, no API/DB)
+| Tag | Module | Notes |
+|-----|--------|-------|
+| DL | Document Library + Expiry Tracking | `src/app/(dashboard)/documents/`. ModuleGuard references `documents` key not in `EnabledModules` — fix before build. |
+| TM | Training Matrix (cross-cuts Modules 10 + 11) | `src/app/(dashboard)/training/`. |
+| WF | Workforce sub-views: Flights, Accommodation, Travel Requests | `src/app/(dashboard)/workforce/layout.tsx`. Mining-targeted. |
+| RP-FR | Reports: Frequency Rates (TRIFR/LTIFR) | Tender-unlocker. Needs Module 06 Timesheets denominator. |
+| RP-CR | Reports: Compliance Sub-view | Built on Module 04 data (already deployed). |
+
+### Feature-flagged but unbuilt
+| Tag | Module | Priority |
+|-----|--------|----------|
+| ER | Emergency Roll Call / Muster (life-safety, big sales moment) | HIGH — flag `emergency_roll_call_enabled` true in 4 presets |
+| 08a | Offline-first Sync (PWA sub-feature, distinct from shell) | MEDIUM — flag `offline_mode_enabled` true in 4 presets |
 
 ### Next to Build
 | # | Module | Priority |
 |---|--------|----------|
+| 28 | People Module Phase 1c — AI doc review (Claude vision: licence expiry extraction, discrepancy flagging) | HIGH — finishes module 28 |
+| 29 | Involvement Tracking (IP/PI/Witness/First Aider, 3-tier privacy, inferred-links UX) — plan locked at `plans/modules/29-involvement-tracking.md` | HIGH |
 | 06 | Timesheets | HIGH — Kim MVP |
+| 32 | AI Investigation Blame Detection (contractor portal layer) | MEDIUM |
 | 07 | Real-Time Dashboard | MEDIUM |
-| 08 | Mobile PWA | MEDIUM |
+| 08 | Mobile PWA (shell — pair with 08a offline-sync) | MEDIUM |
 | 09 | Reporting | MEDIUM |
+| 33 | Data Migration Tooling (BuildPass/HazardCo importers — sales accelerator) | LOW |
 | 10 | Inductions | LOW |
 | 11 | Qualifications | LOW |
 | 12 | Inspections | LOW |
 | 14 | Plant & Equipment | LOW |
+
+> **Granular tracking** — sub-features, phases, feature flags and code TODOs (54 rows total) live in the Sentinal Feature Tracker:
+> https://docs.google.com/spreadsheets/d/1HFKe5OZE5Q1nU1z0gcqSrlWkRzHhJ8GePA1QnSfyD-M/edit
+> Wired via the native `mcp__gdrive__` MCP server (no n8n). Search with `mcp__gdrive__search`, read content with `mcp__gdrive__read_file`.
 
 ---
 

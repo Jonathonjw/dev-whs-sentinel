@@ -5,7 +5,9 @@
       "Glob",
       "Grep",
       "Agent",
-      "mcp__namesilo__*"
+      "mcp__namesilo__*",
+      "mcp__google-sheets__*",
+      "mcp__gdrive__*"
     ],
     "deny": []
   },
