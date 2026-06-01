@@ -1,0 +1,9 @@
+- [Autonomous mode means complete autonomy](feedback_autonomous_means_autonomous.md) — never ask for review/approval before commit, push, migrate when /autonomous is on
+- [Don't anchor decisions to Kim](feedback_dont_anchor_to_kim.md) — don't reference Kim/Embark Building unless user mentions him in the current message
+- [Mock-first workflow on UI redesigns](feedback_mock_first_ui_redesign.md) — build interactive HTML mock at `mocks/[feature].html` for review BEFORE touching real codebase on non-trivial UI work
+- [Push to deploy — feature branch edits are invisible](feedback_push_to_deploy.md) — after editing the repo, commit+push to your feature branch immediately; Jonathan views Railway deploy not localhost
+- [Sentinal Feature Tracker (Google Sheet)](project_feature_tracker_sheet.md) — 54+ row register of all features; use `mcp__sheets-mcp__*` (direct Sheets API) to read/write
+- [MCP Server patterns + gotchas](mcp-servers.md) — Supabase MCP, Sheets MCP, migration flow
+- [Resend free tier until first customer](project_resend_free_tier.md) — Sentinal email on Resend free tier; don't pitch upgrade until first paying customer
+- [Jonathan — project lead](project_jonathan_collaborator.md) — Jonathan Ward is the project lead/founder; Craig uses feature branches, Jonathan reviews and merges to master
+- [Build status snapshot](project_build_status.md) — what's been built, what's in progress, what's next as of 2026-05-29

@@ -2,13 +2,11 @@
 
 ## Build Status
 - [Full module status + architecture](../../../Epsillon-Media-Claude-Work/memory/sentinal-whs.md) — canonical reference in shared base workspace
-- 20+ modules/features built, migrations 015-032, ~55 DB tables, ~100+ API endpoints
-- Latest session (2026-05-02): Plans 30+31+32 shipped — Submit New Event, polymorphic event forms (6 types, 3-tier taxonomy), consultation lifecycle Plan→Run→Confirm
-- Latest migration: **032** (event_attendees, event_attendee_audit_log, lifecycle_status on investigations)
-- Plan 30+31 (event system + polymorphic forms): Built & Deployed — migrations 026-030
-- Plan 32 (consultation lifecycle): Built & Deployed — migrations 031-032
+- 20+ modules/features built, migrations 015-038, ~55 DB tables, ~100+ API endpoints
+- Latest session (2026-06-01): Actions moved to own tab; multi-assignee (`action_assignees`); factor chips "Reason for Action" (`action_factors`); new API routes for actions + `/api/users/org`
+- Latest migration: **044** (`action_factors` junction table). 043 = `action_assignees`. **Both need manual SQL editor apply** (MCP privileges blocked).
 - **Follow-up required:** Add `CRON_SECRET` to Railway env vars; set up daily external cron to hit `/api/cron/consultation-reminders`
-- Next to build: Plan 28c (AI doc review), Plan 29 (Involvement Tracking), Plan 06 (Timesheets)
+- Next to build: Plan 29 (Involvement Tracking — plan locked), Designations System (DES row 70 in tracker), Module 06 (Timesheets)
 
 ## Founding Customer
 - Kim (Embark Building) — builder, warm lead via Jono's wife
@@ -21,6 +19,7 @@
 - Craig Fitzgerald Neeson (Kalgoorlie) — WHS domain expert, 50/50 ownership
 - Phase 1 (Development): light commitments, 72hr response
 - Expense cap >$500 AUD requires joint written agreement
+- Has a **fork** of the repo on GitHub; submits changes via PRs to `Jonathonjw/WHS-Sentinal` master. Cheat sheet: `craig-setup/GIT-WORKFLOW.md`
 
 ## Supabase
 - Project ID: wuoasccjyqkdstsxuudt
@@ -60,6 +59,16 @@
 - `event_attendee_audit_log` is append-only — DB trigger (`trg_event_attendee_audit_log_no_update` + `_no_delete`) THROWS on any UPDATE or DELETE. Do NOT attempt bulk updates via service role; they will fail loudly.
 - Consultation investigations with `lifecycle_status` set render a different detail view (attendance panel + ConsultationAttendancePanel) rather than plain polymorphic detail. Unwanted Event rows always get the full investigation tabs.
 - Unwanted Event 3-tier taxonomy order: **Incident** (display 10) → Incident — Environmental (20) → Incident — Injury / Illness (30). "Incident" was renamed from "Incident — Other" — don't restore the old name.
+- **`createAdminClient` must NOT use `@supabase/ssr`** — `createServerClient` from `@supabase/ssr` reads the user's session JWT from cookies even when initialised with the service role key, so RLS evaluates against the user token rather than bypassing it. Use plain `createClient` from `@supabase/supabase-js` with `{ auth: { autoRefreshToken: false, persistSession: false } }`. This was causing all admin writes to fail with "new row violates row-level security policy". Fixed in `src/lib/supabase/server.ts` (2026-05-29).
+- Document Types are org-configurable at `/settings/document-types` (migration 037 `document_type_definitions`). The `slug` field is what gets stored as `user_documents.document_type`. Upload form loads types dynamically — don't hardcode doc type lists in components.
+- **Launcher route group** — personal "Welcome back" dashboard lives at `src/app/(launcher)/page.tsx`, NOT inside `(dashboard)`. It has its own `DashboardHeader` (no sidebar). Navigation links inside the launcher must use correct `(dashboard)` paths: `/investigations`, `/actions`, `/events/new` — NOT `/whs/investigations` or `/whs/actions` (those 404).
+- **Optional FK fields in Zod**: `z.string().uuid().nullable().optional()` hard-rejects non-UUID strings (e.g. display names, empty strings). Add `.catch(null)` for optional FK fields so a bad value silently becomes null rather than killing the whole request. Also add a UUID regex guard in the client payload for defence-in-depth.
+- PostgREST embedded join `.select('*, table(col)')` silently returns `null` (not an error) when FK path is ambiguous — page ignores error and renders empty state. Fix: use `.select('*')` + a separate lookup query keyed by the FK column. Always add `const { data, error } = await query; if (error) console.error(...)` to catch this.
+- Event intake form now collects Actual + Potential risk on creation (`actual_likelihood`, `actual_consequence`, `potential_likelihood`, `potential_consequence`). These pre-populate `risk_assessment` JSONB with `source: 'intake'` — check for this before overwriting in the Risk Assessment tab.
+- Settings left-sidebar nav lives at `src/components/settings/settings-nav.tsx` (client component, `usePathname` for active state). Layout at `src/app/(dashboard)/settings/layout.tsx` uses sticky 192px aside + flex content. `/settings` redirects to `/settings/org`.
+- Per-module settings: dynamic route `src/app/(dashboard)/settings/modules/[slug]/page.tsx` reads `MODULE_CONFIGS` from `module-configs.ts`. Add new modules there — no new pages needed.
+- `user_documents` has `notes TEXT` and `source_url TEXT` columns (migration 038). `source_url` = external link (Dropbox/SharePoint); when set, skips AI review and opens directly. `file_url` is the Supabase storage path; use `createSignedUrl` with `{ download: 'Filename.ext' }` for downloads — extract extension from the path, not the `document_name`.
+- **RCA Table tab** (`src/components/investigation/rca-table-tab.tsx`) is currently `minDepth: 'comprehensive'` (only shows on Extreme risk investigations). User couldn't see it on first test — needs a decision: change to `null` (all investigations) or keep Extreme-only. ICAM constants in `src/lib/constants/icam-factors.ts`.
 
 ## Workspace Config
 - `.mcp.json` in Sentinal-WHS workspace root has Supabase (PAT-authed) + Railway + NameSilo. Gitignored.
@@ -68,6 +77,7 @@
 - Supabase PAT shared with Epsillon workspace — if rotated, update both `.mcp.json` files
 - NameSilo MCP endpoint `https://mcp.namesilo.com/rpc` — `X-API-KEY` header auth (NOT `?key=` query param; that's the separate REST API). Details in `../../../Epsillon-Media-Claude-Work/memory/mcp-servers.md`
 - **Supabase Management API token:** Workspace `.mcp.json` PAT only reaches Epsillon Media projects. For Sentinal (project `wuoasccjyqkdstsxuudt`), use the PAT from `epsillon-dev/.mcp.json` key `supabase2` (gitignored, not stored here). When MCP isn't loaded in session, apply migrations via temp `.tmp_apply_migration.mjs` Node script using that token + `https://api.supabase.com/v1/projects/{ref}/database/query`.
+- **Supabase MCP DDL blocked:** `mcp__supabase__apply_migration` AND `mcp__supabase__execute_sql` BOTH return "Your account does not have the necessary privileges" for this Sentinal project. DDL-only workaround: use the Node script above. For SELECT queries `execute_sql` may work — DDL always fails.
 - **Memory lives in workspace dir, NOT in the harness auto-memory path.** Canonical location: `C:\Users\RadiumPCs\Claude Code Workspaces\Sentinal-WHS\memory\` (this file). The system-prompt-configured path `~\.claude\projects\c--Users-RadiumPCs-...-Sentinal-WHS\memory\` is empty by design. Always write/edit memory here, not there — otherwise new entries get orphaned from this index.
 
 ## Brand Decision Pending

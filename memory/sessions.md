@@ -1,3 +1,74 @@
+### 2026-06-01 — ICAM RCA Table tab (investigations)
+- Designed ICAM Root Cause Analysis Table feature with Craig: 5 category sections (DF/TE/IT/HF/Org), Add Factor modal per category, live 5-column visual grid
+- Built: migration 040 (`investigation_rca_factors`), ICAM constants file (all coded factors DF01-DF16, TE01-TE23, IT01-IT14, HF01-HF26, Org codes), API routes GET/POST/DELETE, `RcaTableTab` component
+- Tab colour-coded by category: red=Defences, amber=Task/Env, blue=Individual/Team, purple=Human, teal=Organisational
+- **Issue unresolved:** Tab restricted to `minDepth: 'comprehensive'` (Extreme risk only) — user couldn't see it on test investigation; needs decision: show on all investigations or keep Extreme-only
+
+### 2026-05-30 — Event intake risk matrix + settings redesign
+
+- **Risk Matrix on intake form**: Actual + Potential 5×5 matrix added to Unwanted Event creation form; consequence cells have hover tooltips with all 5 category descriptors; risk values pre-populate `risk_assessment` JSONB on creation (`source: 'intake'`)
+- **Auto-derived investigation level**: Replaced manual dropdown — L→field_level, M→simple_icam, H→standard_icam, E→comprehensive_icam; supervisor override toggle available
+- **Smart reporting banner**: Replaced manual Yes/No toggles with 4-state auto-calculated banner (Notifiable/Potentially Notifiable/Review Required/None); submit button goes red on Notifiable
+- **Response section simplified**: "Suggested Improvements" removed; "Initial Actions Taken" renamed → "Immediate Response Taken" (single field)
+- **AI Investigation welcome screen**: Added branded empty-state card with "Begin Investigation" button for field_level/none investigations that previously showed blank screen
+- **Investigations list blank bug fixed**: `select('*, departments(name)')` PostgREST join was silently failing due to ambiguous FK path — replaced with `select('*')` + separate departments lookup
+- **Settings redesign**: Replaced horizontal `SubNav` with left-sidebar `SettingsNav`; `/settings` redirects to `/settings/org`; sticky sidebar with 4 groups (Organisation / People & Roles / Safety Configuration / System)
+- **Per-module settings pages**: Dynamic route at `/settings/modules/[slug]` for 11 modules; `MODULE_CONFIGS` registry with sections/fields (toggle/select/number); "Coming soon" lock on unwired fields; Module Settings group added to nav
+
+### 2026-05-30 — Craig's Claude Code workspace package
+
+- Built `craig-setup/` folder: `SETUP.md`, `CLAUDE.md` (with `[YOUR_REPO_PATH]` placeholders), `.claude/` with 21 agents, 18 commands, 34 dev/design skills, rules, `settings.json`
+- `push-work.md` Craig-specific: master guard prompts for feature branch before pushing
+- `pull-work.md` Sentinal-only (no multi-repo Epsillon logic)
+- Collaboration model: Craig forks repo, uses feature branches → PRs to Jonathan's master
+
+### 2026-05-30 — Craig git collaboration setup
+
+- User asked how to share the repo with Craig safely (fork vs branch protection)
+- Craig chose to fork `Jonathonjw/WHS-Sentinal` on GitHub
+- Explained fork PR workflow: Craig works on named branches → opens PR to Jon's master → Jon reviews + merges → Railway auto-deploys
+- Craig's sync flow: GitHub "Sync fork" button (or `git fetch upstream && git merge upstream/master`) before starting new work
+- Created `craig-setup/GIT-WORKFLOW.md` — cheat sheet covering sync, branching, committing, PRs, merge conflicts
+- No code changes to main repo this session
+
+### 2026-06-01 — Actions tab + multi-assignee + factor chips
+
+- Moved Corrective Actions out of Summary tab into its own dedicated **Actions** tab in the investigation page
+- Added multi-assignee support: `action_assignees` junction table (migration 043), `assigned_to` single FK kept for legacy; seeded on migration
+- Added "Reason for Action" contributing-factor chips: `action_factors` junction table (migration 044); chips are clickable toggles coloured by ICAM category (orange/blue/teal/purple)
+- New API routes: `GET/POST /api/investigations/[id]/actions`, `PATCH/DELETE /api/investigations/[id]/actions/[actionId]`, `GET /api/users/org`
+- Form field order matches Craig's design: Assigned to + Due Date → Reason for Action → Required Action → Title → Hierarchy / Priority / Status → Notes
+- Quick-status select on each action card; edit/delete inline; empty state with CTA
+- **Migrations 043 + 044 NOT YET APPLIED** — Supabase MCP `apply_migration` AND `execute_sql` both reject with privilege error; must run manually via SQL editor for `wuoasccjyqkdstsxuudt`
+
+### 2026-06-01 — Event submission validation bug fix
+- Craig (co-founder) reported "Validation Failed" error when trying to submit an Unwanted Event
+- Root cause: `reported_to` Zod field `z.string().uuid()` was hard-rejecting a non-UUID string value somehow reaching the server (likely display name text from browser autofill or older cached build)
+- Diagnosis method: added debug logging to API route + field-name details to error banner — error identified as `reported_to: Invalid UUID`
+- Fix: `.catch(null)` on `reported_to` Zod schema (silently coerce invalid → null) + UUID regex guard in form payload
+- Cleaned up all debug logging after fix; pushed to master
+- **Follow-up:** Root cause not fully confirmed — suspect browser autofill filling `name="reported_to"` select with stored contact name. Worth checking Craig's browser autofill settings.
+
+### 2026-05-30 — Personal dashboard nav strip + broken link fixes
+
+- Personal dashboard (`(launcher)/page.tsx`) had no navigation — users trapped on landing page with only "All Modules" escape
+- Added `NavStrip` component below launcher header: WHS Overview, Investigations, Actions, People, SWMS, Checklists, Reports — horizontal scrollable on mobile
+- Fixed 7 broken links pointing to `/whs/investigations` and `/whs/actions` — these routes don't exist; correct paths are `/investigations` and `/actions`; "Report Incident" button fixed to `/events/new`
+- Renamed sidebar "Home" → "My Dashboard" and "Dashboard" → "WHS Overview" to disambiguate the two different dashboard pages
+- Updated in both `sidebar.tsx` (desktop) and `header.tsx` (mobile menu)
+
+### 2026-05-29 — Module 28c AI Document Review (complete)
+
+- Built `document-extractor.ts` — Claude vision extraction, HEIC→JPEG via sharp, discrepancy detection between AI-read fields and user-declared metadata
+- Admin document upload on person profile — Documents tab, Add Document panel with file/URL toggle, notes field, async extraction on upload
+- Onboarding Reviews admin queue — per-discrepancy Accept AI / Dismiss / Override panel, View/Download buttons for each uploaded document
+- Document Types Settings — `/settings/document-types` configurable catalogue per org (name, alias, required fields, expiry toggle); migration 037
+- Document edit panel — click-to-expand inline form on each DocCard, PATCH `/api/documents/[id]` route
+- Migrations: 037 (`document_type_definitions`), 038 (`notes` + `source_url` on `user_documents`)
+- Notifications: supervisors (same dept) + WHS advisors/site managers notified on discrepancy flag
+- Critical fix: `createAdminClient()` was using `@supabase/ssr` which reads user JWT from cookies even with service role key — switched to plain `createClient` from `@supabase/supabase-js`, fixing persistent RLS violations across all admin writes
+- Tracker: 28c → Built & Deployed; DT (Document Types) → Built & Deployed; DES + DOC-VH → Planned (rows 70-72)
+
 ### 2026-04-19 — NameSilo MCP setup
 
 - Confirmed NameSilo has an official MCP server at `https://mcp.namesilo.com/rpc`
