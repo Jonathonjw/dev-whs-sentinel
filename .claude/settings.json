@@ -9,13 +9,54 @@
       "mcp__google-sheets__*",
       "mcp__gdrive__*"
     ],
-    "deny": []
+    "deny": [
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf ~:*)",
+      "Bash(rm -rf /*:*)"
+    ],
+    "defaultMode": "bypassPermissions",
+    "ask": [
+      "Bash(rm:*)",
+      "Bash(rmdir:*)",
+      "Bash(del:*)",
+      "Bash(rd:*)",
+      "Bash(git push:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -f:*)",
+      "Bash(git clean -fd:*)",
+      "Bash(git branch -D:*)",
+      "Bash(git checkout --:*)",
+      "Bash(git restore:*)",
+      "Bash(mv:*)",
+      "Bash(truncate:*)",
+      "Bash(dropdb:*)",
+      "mcp__gmail__send_email",
+      "mcp__gmail__delete_email",
+      "mcp__gmail__batch_delete_emails",
+      "mcp__resend__send-email",
+      "mcp__resend__send-batch-emails",
+      "mcp__resend__send-broadcast",
+      "mcp__resend__remove-broadcast",
+      "mcp__resend__remove-domain",
+      "mcp__claude_ai_Clickup__clickup_delete_task",
+      "mcp__n8n__delete_workflow",
+      "mcp__n8n__delete_execution",
+      "mcp__supabase__delete_branch",
+      "mcp__supabase__pause_project",
+      "mcp__supabase__restore_project",
+      "mcp__stripe__create_refund"
+    ]
   },
   "mcpServers": {
     "supabase": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@anthropic-ai/supabase-mcp@latest"]
+      "args": [
+        "-y",
+        "@anthropic-ai/supabase-mcp@latest"
+      ]
     }
   }
 }
